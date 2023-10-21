@@ -43,46 +43,12 @@
        <string>Solve</string>
       </property>
      </widget>
-     <widget class="QWidget" name="horizontalLayoutWidget">
-      <property name="geometry">
-       <rect>
-        <x>160</x>
-        <y>140</y>
-        <width>160</width>
-        <height>80</height>
-       </rect>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout"/>
-     </widget>
     </widget>
     <widget class="QWidget" name="tabFrame">
      <attribute name="title">
       <string>Tab 2</string>
      </attribute>
     </widget>
-   </widget>
-   <widget class="QTableWidget" name="tableWidget">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>20</y>
-      <width>441</width>
-      <height>351</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="pushButton">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>380</y>
-      <width>75</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>PushButton</string>
-    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">

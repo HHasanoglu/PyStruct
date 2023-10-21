@@ -24,7 +24,7 @@ class Assembler:
         return KG @ displacements_total
 
     def get_assemble_matrix(self, Nodes, ElementsList):
-        dof_per_node = Nodes[0].DofPerNode
+        dof_per_node = 3
         Ndof = len(Nodes) * dof_per_node
         KG = np.zeros((Ndof, Ndof), dtype=float)
         arr2d = self.get_mapping_array_primary(Nodes)
@@ -35,8 +35,8 @@ class Assembler:
             kk += 1
             Kg = element.get_global_stiffness_matrix()
             for i in range(dof_per_node):
-                G[i] = arr2d[element.Nodes[0].ID - 1, i]
-                G[i + dof_per_node] = arr2d[element.Nodes[1].ID - 1, i]
+                G[i] = arr2d[element.nodeI.label - 1, i]
+                G[i + dof_per_node] = arr2d[element.nodeJ.label - 1, i]
 
             for i in range(2 * dof_per_node):
                 P = G[i]
@@ -48,7 +48,7 @@ class Assembler:
 
     def get_assembled_reduced_matrix(self, Nodes, ElementsList):
         arr2d, count = self.get_mapping_array(Nodes)
-        dof_per_node = Nodes[0].DofPerNode
+        dof_per_node = 3
         G = np.zeros(2 * dof_per_node, dtype=int)
         KGReduced = np.zeros((count, count), dtype=float)
 
@@ -106,7 +106,7 @@ class Assembler:
         return arr2d, count
 
     def get_mapping_array_primary(self, Nodes):
-        dof_per_node = Nodes[0].DofPerNode
+        dof_per_node =3 #Nodes[0].DofPerNode
         count = 0
         arr2d = np.zeros((len(Nodes), dof_per_node), dtype=int)
 

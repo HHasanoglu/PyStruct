@@ -1,8 +1,15 @@
+from ctypes.wintypes import DOUBLE
 from enum import Enum
+import enum
+from platform import node
+from tokenize import Double
 from Assembler import Assembler, eRestraint
 from Elements import TrussElement
-from Node import TrussNode
 import math
+from Material import Material
+from Node import Node
+from Section import Section
+import numpy as np
 
 
 class eBenchmarkTests(Enum):
@@ -11,7 +18,8 @@ class eBenchmarkTests(Enum):
     Test3 = 3
     Test4 = 4
     Test5 = 5
-    
+
+
 class eResultToShow(Enum):
     Dispx = 0
     Dispy = 1
@@ -19,12 +27,11 @@ class eResultToShow(Enum):
     Stress = 3
     Strain = 4
 
+
 class TrussSolverHelper:
-  
     def __init__(self):
         self._nodeList = []
         self._elementList = []
-        
 
     @property
     def NodeList(self):
@@ -34,28 +41,34 @@ class TrussSolverHelper:
     def ElementList(self):
         return self._elementList
 
-    def AddNode(self, NodeID, Xcoord, Ycoord):
-        node=TrussNode(NodeID, Xcoord, Ycoord)
+    def AddNode(self, NodeID: int, Xcoord: float, Ycoord: float, Zcoord: float):
+        node = Node(NodeID, Xcoord, Ycoord, Zcoord)
         self._nodeList.append(node)
 
-    def AddMember(self, memberLabel, nodeI, nodeJ, E, Area):
-        nodei = self.GetNodeById(nodeI)
-        nodej = self.GetNodeById(nodeJ)
-        self._elementList.append(TrussElement(memberLabel, nodei, nodej, E, Area))
+    def AddMember(
+        self, memberLabel: int, nodeILabel: int, nodeJLabel: int, E: float, Area: float
+    ):
+        nodei = self.GetNodeById(nodeILabel)
+        nodej = self.GetNodeById(nodeJLabel)
+        material = Material(E)
+        section = Section(Area)
+        self._elementList.append(
+            TrussElement(memberLabel, nodei, nodej, material, section)
+        )
 
-    def AddLoad(self, nodeId, fx, fy):
+    def AddLoad(self, nodeId, fx:float, fy:float,fz:float):
         node = self.GetNodeById(nodeId)
-        node.Fx = fx
-        node.Fy = fy
+        node.forces=[fx,fy,fz]
 
-    def AddRestrainedNode(self, nodeId, isXRestrained, isYRestrained):
+    def AddRestrainedNode(
+        self, nodeId: int, isXRestrained: bool, isYRestrained: bool, isZRestrained: bool
+    ):
         node = self.GetNodeById(nodeId)
-        if isinstance(node, TrussNode):
-            node.XRestraint = eRestraint.Restrained if isXRestrained else eRestraint.Free
-            node.YRestraint = eRestraint.Restrained if isYRestrained else eRestraint.Free
+        if isinstance(node, Node):
+            node.restraints = [isXRestrained, isYRestrained, isZRestrained]
 
-    def GetNodeById(self, NodeId):
-        return next((x for x in self._nodeList if x.ID == NodeId), None)
+    def GetNodeById(self, NodeId: int)->Node:
+        return next((x for x in self._nodeList if x.label == NodeId), None)
 
     def ClearNodeAndElements(self):
         self._nodeList.clear()
@@ -110,12 +123,12 @@ class TrussSolverHelper:
             self.CreateExample5()
 
     def CreateExample1(self):
-        self.AddNode(1, 0, 0)
-        self.AddNode(2, 5, 8.66)
-        self.AddNode(3, 15, 8.66)
-        self.AddNode(4, 20, 0)
-        self.AddNode(5, 10, 0)
-        self.AddNode(6, 10, -5)
+        self.AddNode(1, 0, 0, 0)
+        self.AddNode(2, 5, 0, 8.66)
+        self.AddNode(3, 15, 0, 8.66)
+        self.AddNode(4, 20, 0, 0)
+        self.AddNode(5, 10, 0, 0)
+        self.AddNode(6, 10, 0, -5)
         E = 200 * math.pow(10, 9)
         A = 5000
         self.AddMember(1, 1, 2, E, A)
@@ -180,17 +193,47 @@ class TrussSolverHelper:
     def CreateExample4(self):
         E = 200 * math.pow(10, 9)
         A = 5000
-        node=0
-        for x, y in [(0, 0), (10, 10), (20, 8.333), (30, 6.667), (40, 5), (50, 3.333), (60, 1.667), (70, 3.333), (80, 1.667), (90, 3.333), (100, 5), (110, 6.667), (120, 8.333), (130, 10), (140, 0), (130, 0), (120, 0), (110, 0), (100, 0), (90, 0), (80, 0), (70, 0), (60, 0), (50, 0), (40, 0), (30, 0), (20, 0), (10, 0)]:
+        node = 0
+        nodes = [
+            (0, 0, 0),
+            (10, 0, 10),
+            (20, 0, 8.333),
+            (30, 0, 6.667),
+            (40, 0, 5),
+            (50, 0, 3.333),
+            (60, 0, 1.667),
+            (70, 0, 3.333),
+            (80, 0, 1.667),
+            (90, 0, 3.333),
+            (100, 0, 5),
+            (110, 0, 6.667),
+            (120, 0, 8.333),
+            (130, 0, 10),
+            (140, 0, 0),
+            (130, 0, 0),
+            (120, 0, 0),
+            (110, 0, 0),
+            (100, 0, 0),
+            (90, 0, 0),
+            (80, 0, 0),
+            (70, 0, 0),
+            (60, 0, 0),
+            (50, 0, 0),
+            (40, 0, 0),
+            (30, 0, 0),
+            (20, 0, 0),
+            (10, 0, 0),
+        ]
+
+        for x, y, z in nodes:
             node += 1
-            self.AddNode(node, x, y)
+            self.AddNode(node, x, y, z)
 
         member = 1
         for i in range(1, 28):
             if i != 15:
                 self.AddMember(member, i, i + 1, E, A)
-                member+=1
-                
+                member += 1
 
         end = 28
         for i in range(2, 15):
@@ -262,3 +305,55 @@ class TrussSolverHelper:
 
         for i in range(6, 13):
             self.AddLoad(i, 0, -200000)
+
+    def CreateExample6(self):
+        E = 200 * math.pow(10, 9)
+        A = 5000
+        nodes = [
+            [-2, -2, 0],  # Node 1
+            [2, -2, 0],  # Node 2
+            [2, 2, 0],  # Node 3
+            [-2, 2, 0],  # Node 4
+            [-0.5, -0.5, 1],  # Node 5
+            [0.5, -0.5, 1],  # Node 6
+            [0.5, 0.5, 1],  # Node 7
+            [-0.5, 0.5, 1],  # Node 8
+        ]
+
+        for i, node in enumerate(nodes):
+            x, y, z = node
+            self.AddNode(i + 1, x, y, z)
+
+        members = np.array(
+            [
+                [1, 5],
+                [1, 6],
+                [2, 5],
+                [2, 6],
+                [2, 7],
+                [3, 6],
+                [3, 7],
+                [3, 8],
+                [4, 7],
+                [4, 8],
+                [4, 5],
+                [1, 8],
+                [5, 7],
+                [6, 8],
+                [5, 6],
+                [6, 7],
+                [7, 8],
+                [5, 8],
+            ]
+        )
+        for i, member in enumerate(members):
+            self.AddMember(i + 1, member[0], member[1], E, A)
+
+        restrainedDoF = [1, 2, 3, 4]
+        for resdof in restrainedDoF:
+            self.AddRestrainedNode(resdof, True, True, True)
+
+        self.AddLoad(5, 0, 0, -100000)
+        self.AddLoad(6, 0, 0, -100000)
+        self.AddLoad(7, 0, 0, -100000)
+        self.AddLoad(8, 0, 0, -100000)

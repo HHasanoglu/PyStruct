@@ -24,7 +24,9 @@
     <Compile Include="Assembler.py" />
     <Compile Include="Elements.py" />
     <Compile Include="MainUI.py" />
+    <Compile Include="Material.py" />
     <Compile Include="Node.py" />
+    <Compile Include="Section.py" />
     <Compile Include="TrussHelper.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

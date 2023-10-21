@@ -19,64 +19,55 @@ class MainUI(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         # Create a Matplotlib figure and canvas
-        self.figure = Figure()
+        self.figure = Figure(figsize=(10,25))
         self.canvas = FigureCanvas(self.figure)
-
-        # Create a reference to the Matplotlib axes for plotting
-        self.ax = self.figure.add_subplot(111)
-
-        # Add the Matplotlib canvas to the layout
         layout.addWidget(self.canvas)
 
         # Set the alignment of the layout within the central widget
-        layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
+        layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         # Set the central widget to use the layout
         central_widget.setLayout(layout)
-        
 
         self.btnSolve.clicked.connect(self.btnSolveClicked)
 
     def btnSolveClicked(self):
-        self._helper.CreateExample4()
-        # self._helper.AnalyzeModel()
+        self._helper.CreateExample6()
+        self._helper.AnalyzeModel()
         self.PlotElements()
         
 
     def PlotElements(self):
-        # Clear the previous plot
-        self.ax.clear()
+       # Clear the previous plot
+        self.figure.clear()
+        self.ax = self.figure.add_subplot(111, projection='3d')
         self.ax.grid()
-        self.ax.set_title('Structure to analyse')
-        self.ax.set_xlabel('Distance (m)')
-        self.ax.set_ylabel('Distance (m)')
-       
+        self.ax.set_xlabel('X (m)')
+        self.ax.set_ylabel('Y (m)')
+        self.ax.set_zlabel('Z (m)')
+        self.ax.set_title('Structure to analyze')
+        self.ax.grid(False)
+           # Hide the 3D plot walls
+        self.ax.xaxis.pane.fill = False
+        self.ax.yaxis.pane.fill = False
+        self.ax.zaxis.pane.fill = False
 
-        # Set equal aspect ratio for the plot
-        # self.ax.set_aspect('equal', adjustable='box')
+        for node in self._helper.NodeList:
+            x, y, z = node.coordinates
+            self.ax.scatter(x, y, z, c='r', marker='o')  # 'r' for red points, 'o' for circular markers
+            self.ax.text(x, y, z, f'{node.label}', fontsize=12, ha='right')
 
         # Plot members
         for mbr in self._helper._elementList:
-            node_i = mbr.Nodes[0]
-            node_j = mbr.Nodes[1]
+            node_i = mbr.nodeI
+            node_j = mbr.nodeJ
 
-            ix = node_i.Xcoord
-            iy = node_i.Ycoord
-            jx = node_j.Xcoord
-            jy = node_j.Ycoord
+            x1, y1, z1 = node_i.coordinates
+            x2, y2, z2 = node_j.coordinates
 
             # Add a Matplotlib plot for the current member
-            x_data = [ix, jx]
-            y_data = [iy, jy]
-            self.ax.plot(x_data, y_data, color='b')  # 'b' for blue lines
-        
-        # Plot points for nodes
-        for node in self._helper.NodeList:
-            x = node.Xcoord
-            y = node.Ycoord
-            self.ax.scatter(x, y, c='r', marker='o')  # 'r' for red points, 'o' for circular markers
-            
-        
+            self.ax.plot([x1, x2], [y1, y2], [z1, z2], color='b')  # 'b' for blue lines
+        self.ax.set_box_aspect([4, 2, 2])  # This makes the plot a cube
         self.canvas.draw()
 
 
