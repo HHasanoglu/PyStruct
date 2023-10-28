@@ -1,6 +1,7 @@
 from ctypes.wintypes import DOUBLE
 from enum import Enum
 import enum
+from operator import truediv
 from platform import node
 from tokenize import Double
 from Assembler import Assembler, eRestraint
@@ -29,9 +30,21 @@ class eResultToShow(Enum):
 
 
 class TrussSolverHelper:
+
+    #Ctor
+    #region
+
     def __init__(self):
         self._nodeList = []
         self._elementList = []
+        self._force = []
+        self._isAnalysisSuccessful = False
+        self._assembler = Assembler
+        
+    #endregion
+
+    #Properties
+    #region
 
     @property
     def NodeList(self):
@@ -40,29 +53,38 @@ class TrussSolverHelper:
     @property
     def ElementList(self):
         return self._elementList
+    
+    #endregion
 
+    #Public Methods
+    #region
+
+    def AnalyzeModel(self):
+        
+        if len(self._elementList) > 0 and len(self._nodeList) > 0:
+            self._assembler = Assembler(self._elementList, self._nodeList)
+            self._isAnalysisSuccessful=True
+            
+    def GetDisplacedNodes(self):
+        displacements = self._assembler.get_total_displacement()
+        return self._nodeList
+    
     def AddNode(self, NodeID: int, Xcoord: float, Ycoord: float, Zcoord: float):
         node = Node(NodeID, Xcoord, Ycoord, Zcoord)
         self._nodeList.append(node)
 
-    def AddMember(
-        self, memberLabel: int, nodeILabel: int, nodeJLabel: int, E: float, Area: float
-    ):
+    def AddMember(self, memberLabel: int, nodeILabel: int, nodeJLabel: int, E: float, Area: float):
         nodei = self.GetNodeById(nodeILabel)
         nodej = self.GetNodeById(nodeJLabel)
         material = Material(E)
         section = Section(Area)
-        self._elementList.append(
-            TrussElement(memberLabel, nodei, nodej, material, section)
-        )
+        self._elementList.append(TrussElement(memberLabel, nodei, nodej, material, section))
 
     def AddLoad(self, nodeId, fx:float, fy:float,fz:float):
         node = self.GetNodeById(nodeId)
         node.forces=[fx,fy,fz]
 
-    def AddRestrainedNode(
-        self, nodeId: int, isXRestrained: bool, isYRestrained: bool, isZRestrained: bool
-    ):
+    def AddRestrainedNode(self, nodeId: int, isXRestrained: bool, isYRestrained: bool, isZRestrained: bool):
         node = self.GetNodeById(nodeId)
         if isinstance(node, Node):
             node.restraints = [isXRestrained, isYRestrained, isZRestrained]
@@ -73,14 +95,7 @@ class TrussSolverHelper:
     def ClearNodeAndElements(self):
         self._nodeList.clear()
         self._elementList.clear()
-
-    def AnalyzeModel(self):
-        isAnalysisSuccessful = False
-        if len(self._elementList) > 0 and len(self._nodeList) > 0:
-            assembler = Assembler(self._elementList, self._nodeList)
-            isAnalysisSuccessful = True
-        return isAnalysisSuccessful
-
+    
     def GetMinValueForColorMap(self, type):
         minValue = 0
         if self._nodeList is not None:
@@ -309,7 +324,7 @@ class TrussSolverHelper:
     def CreateExample6(self):
         E = 200 * math.pow(10, 9)
         A = 5000
-        nodes = [
+        nodelist = [
             [-2, -2, 0],  # Node 1
             [2, -2, 0],  # Node 2
             [2, 2, 0],  # Node 3
@@ -320,7 +335,7 @@ class TrussSolverHelper:
             [-0.5, 0.5, 1],  # Node 8
         ]
 
-        for i, node in enumerate(nodes):
+        for i, node in enumerate(nodelist):
             x, y, z = node
             self.AddNode(i + 1, x, y, z)
 
@@ -353,7 +368,9 @@ class TrussSolverHelper:
         for resdof in restrainedDoF:
             self.AddRestrainedNode(resdof, True, True, True)
 
-        self.AddLoad(5, 0, 0, -100000)
+        self.AddLoad(5, 0, 0,  110000)
         self.AddLoad(6, 0, 0, -100000)
         self.AddLoad(7, 0, 0, -100000)
         self.AddLoad(8, 0, 0, -100000)
+
+#endregion

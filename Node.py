@@ -28,7 +28,7 @@ class Node:
         self.label=label
         self._guid = uuid.uuid4()
         self._coordinates = (x, y, z)
-        self._displacements: List[float] = []
+        self._displacements: List[float] = [0,0,0]
         self._restraints: List[bool] = []
         self._forces: List[float] = []
 
@@ -100,7 +100,21 @@ class Node:
     @forces.setter
     def forces(self, values: List[float]) -> None:
             self._forces = values
-            
+    
+    @property       
+    def GetDisplacedCoordinates(self) -> List[float]:
+        """
+        Get the displaced Coordinates [x+dx, y+dy, z+dz ] of the node.
+
+        Returns:
+            List[float]: The node's final Coordinates.
+        """
+        FinalCoords=[0,0,0]
+        for i in range(len(self._coordinates)):
+             FinalCoords[i]=self._coordinates[i]+150000000* self._displacements[i]
+        
+        return FinalCoords
+    
     def __str__(self) -> str:
         """
         Return a string representation of the node, including its GUID, coordinates, and displacements.

@@ -1,6 +1,11 @@
 from enum import Enum
+from platform import node
+from tkinter import TRUE
 import numpy as np
 from scipy.linalg import inv
+
+from Elements import TrussElement
+from Node import Node
 
 class eRestraint(Enum):
     Free = 0
@@ -46,7 +51,7 @@ class Assembler:
 
         return KG
 
-    def get_assembled_reduced_matrix(self, Nodes, ElementsList):
+    def get_assembled_reduced_matrix(self, Nodes:list[Node], ElementsList:list[TrussElement]):
         arr2d, count = self.get_mapping_array(Nodes)
         dof_per_node = 3
         G = np.zeros(2 * dof_per_node, dtype=int)
@@ -54,8 +59,8 @@ class Assembler:
 
         for element in ElementsList:
             for i in range(dof_per_node):
-                G[i] = arr2d[element.Nodes[0].ID - 1, i]
-                G[i + dof_per_node] = arr2d[element.Nodes[1].ID - 1, i]
+                G[i] = arr2d[element.nodeI.label - 1, i]
+                G[i + dof_per_node] = arr2d[element.nodeJ.label - 1, i]
 
             Kg = element.get_global_stiffness_matrix()
             for i in range(2 * dof_per_node):
@@ -67,35 +72,29 @@ class Assembler:
 
         return KGReduced
 
-    def get_reduced_force_vector(self, Nodes):
-        dof_per_node = Nodes[0].DofPerNode
+    def get_reduced_force_vector(self, Nodes:list[Node]):
+        dof_per_node = 3
         arr2d, count = self.get_mapping_array(Nodes)
         force_reduced = np.zeros((count, 1), dtype=float)
 
         for node in Nodes:
             for i in range(dof_per_node):
-                Q = arr2d[node.ID - 1, i]
+                Q = arr2d[node.label - 1, i]
                 if Q != -1:
-                    if i == 0:
-                        force_reduced[Q, 0] = node.Fx
-                    elif i == 1:
-                        force_reduced[Q, 0] = node.Fy
+                    force_reduced[Q, 0] = node.forces[i]
 
         return force_reduced
 
-    def get_mapping_array(self, Nodes):
-        dof_per_node = Nodes[0].DofPerNode
+    def get_mapping_array(self, Nodes:list[Node]):
+        dof_per_node = 3
         arr2d = np.zeros((len(Nodes), dof_per_node), dtype=int)
         count = 0
 
         for node in Nodes:
-            row_id = node.ID
-            if node.XRestraint == eRestraint.Restrained:
-                arr2d[row_id - 1, 0] = -1
-            if node.YRestraint == eRestraint.Restrained:
-                arr2d[row_id - 1, 1] = -1
-            # if isinstance(node, FrameNode) and node.RotationRestraint == eRestraint.Restrained:
-            #     arr2d[row_id - 1, 2] = -1
+            row_id = node.label
+            for i,dof in enumerate(node.restraints):
+                if dof == True:
+                    arr2d[row_id - 1, i] = -1
 
         for i in range(len(Nodes)):
             for j in range(dof_per_node):
@@ -120,8 +119,8 @@ class Assembler:
     def get_displacement_vector(self, KGReduced, forceReduced):
         return np.dot(inv(KGReduced), forceReduced)
 
-    def get_total_displacement(self, Nodes, displacements):
-        dof_per_node = Nodes[0].DofPerNode
+    def get_total_displacement(self, Nodes:list[Node], displacements:list[float]):
+        dof_per_node = 3
         arr2d, count = self.get_mapping_array(Nodes)
         number_of_dof = len(Nodes) * dof_per_node
         displacements_total = np.zeros((number_of_dof, 1), dtype=float)
@@ -132,12 +131,8 @@ class Assembler:
                 if Q != -1:
                     Id = dof_per_node * i + j
                     displacements_total[Id, 0] = displacements[Q, 0]
-                    node = next((x for x in Nodes if x.ID == i + 1), None)
-                    if j == 0:
-                        node.Dispx = displacements[Q, 0]
-                    elif j == 1:
-                        node.Dispy = displacements[Q, 0]
-                    # elif isinstance(node, FrameNode):
-                    #     node.Rotation = displacements[Q, 0]
+                    node = next((x for x in Nodes if x.label == i + 1), None)
+                    node.displacements[j]=displacements[Q, 0]
+
 
         return displacements_total

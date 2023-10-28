@@ -17,10 +17,10 @@
    <widget class="QTabWidget" name="Tabs">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>521</width>
-      <height>361</height>
+      <x>10</x>
+      <y>20</y>
+      <width>581</width>
+      <height>601</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -33,15 +33,83 @@
      <widget class="QPushButton" name="btnSolve">
       <property name="geometry">
        <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>81</width>
+        <x>10</x>
+        <y>290</y>
+        <width>141</width>
         <height>71</height>
        </rect>
       </property>
       <property name="text">
        <string>Solve</string>
       </property>
+     </widget>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>171</width>
+        <height>271</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QCheckBox" name="chkCompleteModel">
+         <property name="text">
+          <string>Show Complete Model</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideMembers">
+         <property name="text">
+          <string>Hide Members</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideNodes">
+         <property name="text">
+          <string>Hide Nodes</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideLoads">
+         <property name="text">
+          <string>Hide Loads</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideSupports">
+         <property name="text">
+          <string>Hide Supports</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideMemberLabel">
+         <property name="text">
+          <string>Hide Member Label</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkHideNodeLabel">
+         <property name="text">
+          <string>Hide Node Label</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkDeformedModel">
+         <property name="text">
+          <string>Show Deformed Model</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
     <widget class="QWidget" name="tabFrame">
