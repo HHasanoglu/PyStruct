@@ -1,3 +1,4 @@
+from logging import setLogRecordFactory
 import string
 import sys
 from tkinter import TRUE
@@ -11,6 +12,7 @@ from Elements import TrussElement
 from Node import Node
 from TrussHelper import TrussSolverHelper
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+import matplotlib.pyplot as plt
 
 
 class MainUI(QMainWindow):
@@ -20,7 +22,7 @@ class MainUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self._helper = TrussSolverHelper()
-        self._helper.CreateExample6()
+        self._helper.CreateExample7()
 
         # Load the UI from 'Main.ui' and set it as the central widget
         uic.loadUi("UI/Main.ui", self)
@@ -43,6 +45,10 @@ class MainUI(QMainWindow):
         self.resetAllCheckBoxesForCompleteModel()
         self.InitializePlotArena()
         self._showCompleteModel = TRUE
+        self.SliderScale.setMinimum(0)
+        self.SliderScale.setMaximum(100)
+        self._scale=0
+        
 
     # endregion
 
@@ -58,6 +64,7 @@ class MainUI(QMainWindow):
         self.chkHideMemberLabel.stateChanged.connect(self.chkHideMemberLabel_state_changed)
         self.chkHideNodeLabel.stateChanged.connect(self.chkHideNodeLabel_state_changed)
         self.chkDeformedModel.stateChanged.connect(self.chkDeformedModel_state_changed)
+        self.SliderScale.valueChanged.connect(self.ScaleSlider_value_changed)
 
     def resetAllCheckBoxesForCompleteModel(self):
         self._hideMembers = False
@@ -83,26 +90,50 @@ class MainUI(QMainWindow):
 
         if self._showDeflectedModel:
             self.PlotDeflectedModel()
+        
+        self.ax.set_box_aspect([1, 1, 1])
+        
+        xmin=min(self._helper.NodeList, key=lambda x: x.coordinates[0])
+        xmax=max(self._helper.NodeList, key=lambda x: x.coordinates[0])
+        
+        ymin=min(self._helper.NodeList, key=lambda x: x.coordinates[1])
+        ymax=max(self._helper.NodeList, key=lambda x: x.coordinates[1])
+        
+        zmin=min(self._helper.NodeList, key=lambda x: x.coordinates[2])
+        zmax=max(self._helper.NodeList, key=lambda x: x.coordinates[2])
+        
+        dx=xmax.coordinates[0]-xmin.coordinates[0]
+        dy=ymax.coordinates[1]-ymin.coordinates[1]
+        dz=zmax.coordinates[2]-zmin.coordinates[2]
+        aspectTotal=dx+dy+dz
+        
+        self.ax.set_xlim(xmin.coordinates[0],xmax.coordinates[0])
+        self.ax.set_ylim(ymin.coordinates[1],ymax.coordinates[1])
+        self.ax.set_zlim(zmin.coordinates[2],zmax.coordinates[2])
 
-        self.ax.set_box_aspect([4, 2, 2])  # This makes the plot a cube
+        # self.ax.get_xaxis().set_major_locator(plt.AutoLocator())
+        # self.ax.get_yaxis().set_major_locator(plt.AutoLocator())
+        # self.ax.get_zaxis().set_major_locator(plt.AutoLocator())
+
+        self.ax.set_box_aspect([dx/aspectTotal, dy/aspectTotal, dz/aspectTotal])  # This makes the plot a cube
         self.canvas.draw()
 
     def PlotDeflectedModel(self):
         # self.InitializePlotArena()
-        for node in self._helper.NodeList:
-            x, y, z = node.GetDisplacedCoordinates
-            self.DrawNode(x, y, z, "")
+        # for node in self._helper.NodeList:
+        #     x, y, z = node.GetDisplacedCoordinates
+        #     self.DrawNode(x, y, z, "")
 
         # Plot members
         for mbr in self._helper._elementList:
-            node_i = mbr.nodeI
-            node_j = mbr.nodeJ
-            x1, y1, z1 = node_i.GetDisplacedCoordinates
-            x2, y2, z2 = node_j.GetDisplacedCoordinates
-            self.DrawElement(x1, y1, z1, x2, y2, z2, "b")
+            node_i:Node = mbr.nodeI
+            node_j:Node = mbr.nodeJ
+            x1, y1, z1 = node_i.GetDisplacedCoordinates(self._scale)
+            x2, y2, z2 = node_j.GetDisplacedCoordinates(self._scale)
+            self.DrawElement(x1, y1, z1, x2, y2, z2, "y")
 
     def PlotOriginalModel(self):
-        if not self._hideNodes:
+        if not self._hideNodes and self._showCompleteModel:
             for node in self._helper.NodeList:
                 x, y, z = node.coordinates
                 label = ""
@@ -110,25 +141,26 @@ class MainUI(QMainWindow):
                     label = node.label
                 self.DrawNode(x, y, z, label)
 
-                if not self._hideLoads:
-                    self.DrawForceVector(node)
-
         # Plot members
-        if not self._hideMembers:
+        if not self._hideMembers and self._showCompleteModel:
             for mbr in self._helper._elementList:
                 node_i = mbr.nodeI
                 node_j = mbr.nodeJ
                 x1, y1, z1 = node_i.coordinates
                 x2, y2, z2 = node_j.coordinates
                 self.DrawElement(x1, y1, z1, x2, y2, z2, "gray")
+                
+        if not self._hideLoads and self._showCompleteModel:
+            for node in self._helper.NodeList:
+                self.DrawForceVector(node)
 
     def DrawArrowUpward(self, x, y, z, magnitude: float):
-        self.ax.text(x, y, z + 0.5, f"{magnitude} N", color="blue", fontsize=12)
-        self.ax.quiver(x, y, z, 0, 0, 0.5, color="g", picker=5, label="Arrow")
+        self.ax.text(x, y, z + 2.5, f"{magnitude/1000} KN", color="blue", fontsize=12)
+        self.ax.quiver(x, y, z, 0, 0, 2.5, color="g", picker=5, label="Arrow")
 
     def DrawArrowDownWard(self, x, y, z, magnitude: float):
-        self.ax.text(x, y, z + 0.5, f"{magnitude} N", color="blue", fontsize=12)
-        self.ax.quiver(x, y, z + 0.5, 0, 0, -0.5, color="g", label="Arrow")
+        self.ax.text(x, y, z + 2.5, f"{magnitude/1000} KN", color="blue", fontsize=12)
+        self.ax.quiver(x, y, z + 2.5, 0, 0, -2.5, color="g", label="Arrow")
 
     def DrawNode(self, x: float, y: float, z: float, label: string):
         self.ax.scatter(
@@ -181,23 +213,31 @@ class MainUI(QMainWindow):
 
     def btnSolveClicked(self):
         self._helper.AnalyzeModel()
+    
+    def ScaleSlider_value_changed(self,value):
+        self._scale=value*10000000
+        self.PlotModel()
 
     def chkCompleteModel_state_changed(self, state):
-        self._showCompleteModel = state == 2
+        if state == 2:
+            self._showCompleteModel = True
+            self.chkCompleteModel=True
+            self.resetAllCheckBoxesForCompleteModel()
+        else:
+            self._showCompleteModel = False
+            self.chkCompleteModel=False
+            
         self.PlotModel()
 
     def chkDeformedModel_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
         self._showDeflectedModel = state == 2
         self.PlotModel()
 
     def chkHideMembers_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
         self._hideMembers = state == 2
         self.PlotModel()
 
     def chkHideNodes_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
         self._hideNodes = state == 2
         self.PlotModel()
 
@@ -206,17 +246,15 @@ class MainUI(QMainWindow):
         self.PlotModel()
 
     def chkHideSupports_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
+
         self._hideSupports = state == 2
         self.PlotModel()
 
     def chkHideMemberLabel_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
         self._hideMemberLabel = state == 2
         self.PlotModel()
 
     def chkHideNodeLabel_state_changed(self, state):
-        self.chkCompleteModel.setChecked(False)
         self._hideNodeLabel = state == 2
         self.PlotModel()
 
@@ -228,3 +266,5 @@ app = QApplication(sys.argv)
 window = MainUI()
 window.showMaximized()
 sys.exit(app.exec())
+
+

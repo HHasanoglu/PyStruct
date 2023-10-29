@@ -15,11 +15,10 @@ class Assembler:
     def __init__(self, ElementList, Nodes):
         KGlobal = self.get_assemble_matrix(Nodes, ElementList)
         KGReduced = self.get_assembled_reduced_matrix(Nodes, ElementList)
-        self.show_matrix_representation(KGReduced)
         forceReduced = self.get_reduced_force_vector(Nodes)
         displacement = self.get_displacement_vector(KGReduced, forceReduced)
         TotalDisplacementVector = self.get_total_displacement(Nodes, displacement)
-        reactions = self.get_reactions(KGlobal, TotalDisplacementVector)
+        # reactions = self.get_reactions(KGlobal, TotalDisplacementVector)
 
     def show_matrix_representation(self, matrix):
         for row in matrix:
