@@ -131,6 +131,7 @@ class MainUI(QMainWindow):
     #     print(f"Double-clicked on row {row} with element {selected_element.label}")
 
 
+
     def resetAllCheckBoxesForCompleteModel(self):
         self._hideMembers = False
         self._hideNodes = False
