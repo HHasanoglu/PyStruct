@@ -35,7 +35,7 @@ class TrussSolverHelper:
 
     def __init__(self):
         self._nodeList = []
-        self._elementList = []
+        self._elementList:list[TrussElement] = []
         self._force = []
         self._isAnalysisSuccessful = False
         self._assembler = Assembler

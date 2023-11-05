@@ -1,9 +1,22 @@
+from ast import IsNot
+from asyncio.windows_events import NULL
 from logging import setLogRecordFactory
 import string
 import sys
 from tkinter import TRUE
 from typing import Self
-from PyQt6.QtWidgets import QApplication, QVBoxLayout, QMainWindow, QWidget, QPushButton
+import uuid
+from xml.dom.minidom import Element
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QMainWindow,
+    QWidget,
+    QPushButton,
+)
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -21,8 +34,18 @@ class MainUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.PrepareUI()
+
+    # endregion
+
+    # Private Methods
+    # region
+
+    def PrepareUI(self):
         self._helper = TrussSolverHelper()
         self._helper.CreateExample7()
+        self._trussElementDrawingEntity = {}
+        self._highlightedElement:TrussElement=NULL
 
         # Load the UI from 'Main.ui' and set it as the central widget
         uic.loadUi("UI/Main.ui", self)
@@ -47,13 +70,38 @@ class MainUI(QMainWindow):
         self._showCompleteModel = TRUE
         self.SliderScale.setMinimum(0)
         self.SliderScale.setMaximum(100)
-        self._scale=0
-        
+        self._scale = 0
+        self.setWindowTitle("Your Application")
+        self.setGeometry(100, 100, 800, 600)
 
-    # endregion
+        # Create a QTableWidget
+        self.elementsTable.setColumnCount(5)  # Number of columns
+        self.elementsTable.setHorizontalHeaderLabels(
+            ["Element Id", "Elements Label", "Start Node", "End Node", "Length"]
+        )  # Column headers
+        self.elementsTable.verticalHeader().setVisible(False)
+        self.elementsTable.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.elementsTable.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.elementsTable.setColumnHidden(0, True)
+        self.UpdateTableData();
+    
 
-    # Private Methods
-    # region
+    def UpdateTableData(self):
+        # Clear existing data in the table
+        self.elementsTable.setRowCount(0)
+        sorted_element_list:list[TrussElement] = sorted(self._helper.ElementList,key=lambda x:x.label)
+
+        for row, element in enumerate(sorted_element_list):
+            truss_element:TrussElement = element
+            self.elementsTable.insertRow(row)
+            row_data = [truss_element.handle , truss_element.label, truss_element.nodeI.label, truss_element.nodeJ.label, f"{truss_element.length:.2f}"]
+            for col, col_data in enumerate(row_data):
+                item = QTableWidgetItem(str(col_data))
+                self.elementsTable.setItem(row, col, item)
+                item = self.elementsTable.item(row, col)  # Access the item in the first column (column 0)
+                if item:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
     def SubscribeToEvents(self):
         self.btnSolve.clicked.connect(self.btnSolveClicked)
         self.chkCompleteModel.stateChanged.connect(self.chkCompleteModel_state_changed)
@@ -61,10 +109,27 @@ class MainUI(QMainWindow):
         self.chkHideNodes.stateChanged.connect(self.chkHideNodes_state_changed)
         self.chkHideLoads.stateChanged.connect(self.chkHideLoads_state_changed)
         self.chkHideSupports.stateChanged.connect(self.chkHideSupports_state_changed)
-        self.chkHideMemberLabel.stateChanged.connect(self.chkHideMemberLabel_state_changed)
+        self.chkHideMemberLabel.stateChanged.connect(
+            self.chkHideMemberLabel_state_changed
+        )
         self.chkHideNodeLabel.stateChanged.connect(self.chkHideNodeLabel_state_changed)
         self.chkDeformedModel.stateChanged.connect(self.chkDeformedModel_state_changed)
         self.SliderScale.valueChanged.connect(self.ScaleSlider_value_changed)
+        self.elementsTable.cellClicked.connect(self.elementTableCellClick)
+        self.elementsTable.itemDoubleClicked.connect(self.elementTableRowDoubleClicked)
+
+    def elementTableRowDoubleClicked(self, item: QTableWidgetItem):
+        # The item parameter contains information about the double-clicked cell
+        row = item.row()
+        # You can now access the data in the row and do something with it
+        selected_element = self._helper.ElementList[row]
+    #     self.showDiagram(selected_element)
+
+    # def showDiagram(self, element):
+    #     diagram_window = DiagramWindow(element)
+    #     diagram_window.show()
+    #     print(f"Double-clicked on row {row} with element {selected_element.label}")
+
 
     def resetAllCheckBoxesForCompleteModel(self):
         self._hideMembers = False
@@ -75,7 +140,7 @@ class MainUI(QMainWindow):
         self._hideNodeLabel = False
         self._deformedModel = False
         self._showDeflectedModel = False
-        
+
         self.chkHideMembers.setChecked(False)
         self.chkHideNodes.setChecked(False)
         self.chkHideLoads.setChecked(False)
@@ -90,32 +155,34 @@ class MainUI(QMainWindow):
 
         if self._showDeflectedModel:
             self.PlotDeflectedModel()
-        
+
         self.ax.set_box_aspect([1, 1, 1])
-        
-        xmin=min(self._helper.NodeList, key=lambda x: x.coordinates[0])
-        xmax=max(self._helper.NodeList, key=lambda x: x.coordinates[0])
-        
-        ymin=min(self._helper.NodeList, key=lambda x: x.coordinates[1])
-        ymax=max(self._helper.NodeList, key=lambda x: x.coordinates[1])
-        
-        zmin=min(self._helper.NodeList, key=lambda x: x.coordinates[2])
-        zmax=max(self._helper.NodeList, key=lambda x: x.coordinates[2])
-        
-        dx=xmax.coordinates[0]-xmin.coordinates[0]
-        dy=ymax.coordinates[1]-ymin.coordinates[1]
-        dz=zmax.coordinates[2]-zmin.coordinates[2]
-        aspectTotal=dx+dy+dz
-        
-        self.ax.set_xlim(xmin.coordinates[0],xmax.coordinates[0])
-        self.ax.set_ylim(ymin.coordinates[1],ymax.coordinates[1])
-        self.ax.set_zlim(zmin.coordinates[2],zmax.coordinates[2])
+
+        xmin = min(self._helper.NodeList, key=lambda x: x.coordinates[0])
+        xmax = max(self._helper.NodeList, key=lambda x: x.coordinates[0])
+
+        ymin = min(self._helper.NodeList, key=lambda x: x.coordinates[1])
+        ymax = max(self._helper.NodeList, key=lambda x: x.coordinates[1])
+
+        zmin = min(self._helper.NodeList, key=lambda x: x.coordinates[2])
+        zmax = max(self._helper.NodeList, key=lambda x: x.coordinates[2])
+
+        dx = xmax.coordinates[0] - xmin.coordinates[0]
+        dy = ymax.coordinates[1] - ymin.coordinates[1]
+        dz = zmax.coordinates[2] - zmin.coordinates[2]
+        aspectTotal = dx + dy + dz
+
+        self.ax.set_xlim(xmin.coordinates[0], xmax.coordinates[0])
+        self.ax.set_ylim(ymin.coordinates[1], ymax.coordinates[1])
+        self.ax.set_zlim(zmin.coordinates[2], zmax.coordinates[2])
 
         # self.ax.get_xaxis().set_major_locator(plt.AutoLocator())
         # self.ax.get_yaxis().set_major_locator(plt.AutoLocator())
         # self.ax.get_zaxis().set_major_locator(plt.AutoLocator())
 
-        self.ax.set_box_aspect([dx/aspectTotal, dy/aspectTotal, dz/aspectTotal])  # This makes the plot a cube
+        self.ax.set_box_aspect(
+            [dx / aspectTotal, dy / aspectTotal, dz / aspectTotal]
+        )  # This makes the plot a cube
         self.canvas.draw()
 
     def PlotDeflectedModel(self):
@@ -126,11 +193,11 @@ class MainUI(QMainWindow):
 
         # Plot members
         for mbr in self._helper._elementList:
-            node_i:Node = mbr.nodeI
-            node_j:Node = mbr.nodeJ
+            node_i: Node = mbr.nodeI
+            node_j: Node = mbr.nodeJ
             x1, y1, z1 = node_i.GetDisplacedCoordinates(self._scale)
             x2, y2, z2 = node_j.GetDisplacedCoordinates(self._scale)
-            self.DrawElement(x1, y1, z1, x2, y2, z2, "y")
+            self.TrussElementDrawingEntity[mbr.handle], = self.DrawElement(x1, y1, z1, x2, y2, z2, "y",mbr.label)
 
     def PlotOriginalModel(self):
         if not self._hideNodes and self._showCompleteModel:
@@ -148,11 +215,27 @@ class MainUI(QMainWindow):
                 node_j = mbr.nodeJ
                 x1, y1, z1 = node_i.coordinates
                 x2, y2, z2 = node_j.coordinates
-                self.DrawElement(x1, y1, z1, x2, y2, z2, "gray")
-                
+                self.DrawElement(x1, y1, z1, x2, y2, z2, "gray",mbr.label)
+
         if not self._hideLoads and self._showCompleteModel:
             for node in self._helper.NodeList:
                 self.DrawForceVector(node)
+
+    def HighlightSelectedElment(self, mbr):
+        if self._highlightedElement:
+            node_i = self._highlightedElement.nodeI
+            node_j = self._highlightedElement.nodeJ
+            x1, y1, z1 = node_i.coordinates
+            x2, y2, z2 = node_j.coordinates
+            line=self.DrawElement(x1, y1, z1, x2, y2, z2, "Gray",mbr.label)
+
+        self._highlightedElement=mbr    
+        node_i = mbr.nodeI
+        node_j = mbr.nodeJ
+        x1, y1, z1 = node_i.coordinates
+        x2, y2, z2 = node_j.coordinates
+        line=self.DrawElement(x1, y1, z1, x2, y2, z2, "purple",mbr.label)
+        self.canvas.draw()
 
     def DrawArrowUpward(self, x, y, z, magnitude: float):
         self.ax.text(x, y, z + 2.5, f"{magnitude/1000} KN", color="blue", fontsize=12)
@@ -187,9 +270,10 @@ class MainUI(QMainWindow):
         y2: float,
         z2: float,
         color: string,
+        label:string
     ):
         # Add a Matplotlib plot for the current member
-        self.ax.plot([x1, x2], [y1, y2], [z1, z2], color=color)  # 'b' for blue lines
+        return self.ax.plot([x1, x2], [y1, y2], [z1, z2], color=color,label=f"{label}")  # 'b' for blue lines
 
     def InitializePlotArena(self):
         # Clear the previous plot
@@ -213,20 +297,35 @@ class MainUI(QMainWindow):
 
     def btnSolveClicked(self):
         self._helper.AnalyzeModel()
-    
-    def ScaleSlider_value_changed(self,value):
-        self._scale=value*10000000
+        
+    def elementTableCellClick(self):
+        # Assuming self.elementsTable is your QTableWidget
+        selected_items = self.elementsTable.selectedItems()
+        lines = plt.gca().get_lines()
+        if selected_items:
+            # Get the row index from the first selected item
+            selected_row = self.elementsTable.row(selected_items[0])
+            handle_str = self.elementsTable.item(selected_row, 0).text()  # Assuming it's text
+            handle_uuid = uuid.UUID(handle_str) 
+            selectedElement= next((element for element in self._helper.ElementList if element.handle== handle_uuid),None)
+            if selectedElement:
+                self.HighlightSelectedElment(selectedElement)
+                
+
+
+    def ScaleSlider_value_changed(self, value):
+        self._scale = value * 10000000
         self.PlotModel()
 
     def chkCompleteModel_state_changed(self, state):
         if state == 2:
             self._showCompleteModel = True
-            self.chkCompleteModel=True
+            self.chkCompleteModel = True
             self.resetAllCheckBoxesForCompleteModel()
         else:
             self._showCompleteModel = False
-            self.chkCompleteModel=False
-            
+            self.chkCompleteModel = False
+
         self.PlotModel()
 
     def chkDeformedModel_state_changed(self, state):
@@ -246,7 +345,6 @@ class MainUI(QMainWindow):
         self.PlotModel()
 
     def chkHideSupports_state_changed(self, state):
-
         self._hideSupports = state == 2
         self.PlotModel()
 
@@ -266,5 +364,3 @@ app = QApplication(sys.argv)
 window = MainUI()
 window.showMaximized()
 sys.exit(app.exec())
-
-

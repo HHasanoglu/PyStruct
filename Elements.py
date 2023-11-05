@@ -5,6 +5,7 @@ from typing import List, Tuple
 from Material import Material
 from Node import Node
 from Section import Section
+import uuid
 
 
 class TrussElement:
@@ -33,6 +34,7 @@ class TrussElement:
             material (float): Young's Modulus of the material.
             area (float): Cross-sectional area of the truss element.
         """
+        self.handle = uuid.uuid4()
         self.label = label
         self.nodeI = nodeI
         self.nodeJ = nodeJ
@@ -56,6 +58,7 @@ class TrussElement:
             0.0,
             0.0,
         ]  # Initialize applied moments to zero
+        
 
     def get_global_stiffness_matrix(self) -> List[List[float]]:
         TransformationMatrix = self.GetTransformationMatrix()
